@@ -1,0 +1,99 @@
+{
+  "asset_count": 11,
+  "woocommerce_icon_mark_bounds": [
+    43,
+    44,
+    135,
+    117
+  ],
+  "assets": [
+    {
+      "path": "assets/icon-128x128.png",
+      "format": "PNG",
+      "width": 128,
+      "height": 128,
+      "bytes": 640,
+      "sha256": "7A56E42218F70656C5419C057C55CEC521354E943C90E4690C574DB0A4E8A0FD"
+    },
+    {
+      "path": "assets/icon-256x256.png",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "bytes": 1203,
+      "sha256": "85790F8429AF93416F399C748BAB2372CA9681A313BD5BE2E15E087AEE878847"
+    },
+    {
+      "path": "assets/banner-772x250.png",
+      "format": "PNG",
+      "width": 772,
+      "height": 250,
+      "bytes": 21024,
+      "sha256": "B045DD16585A5E1C159F94A79D6064E1D84FB39BBD0A47A0CED999EE0B7B3D10"
+    },
+    {
+      "path": "assets/banner-1544x500.png",
+      "format": "PNG",
+      "width": 1544,
+      "height": 500,
+      "bytes": 153244,
+      "sha256": "5B03CCEBEFDCDF8E2E1EB37B1C33BE71728E26158BC9ADA897DD816B43910A0F"
+    },
+    {
+      "path": "assets/screenshot-1.png",
+      "format": "PNG",
+      "width": 1022,
+      "height": 1032,
+      "bytes": 88387,
+      "sha256": "D0E6631EC31B5E1A363487694DC3F0CE2A2CD0F1D60B5845B80EA7B5E8A21736"
+    },
+    {
+      "path": "assets/screenshot-2.png",
+      "format": "PNG",
+      "width": 1022,
+      "height": 1032,
+      "bytes": 102538,
+      "sha256": "A3C3AFB87D2FEFBB3FACB7F8CBCA3CEDC25BE202A0D5BAF0CBA610F5BAA8868D"
+    },
+    {
+      "path": "assets/screenshot-3.png",
+      "format": "PNG",
+      "width": 1022,
+      "height": 1372,
+      "bytes": 130590,
+      "sha256": "48BA7880BD3F6892209C815A3C9280525EF862007DDF1C9CC5CF9BA428B4DD6B"
+    },
+    {
+      "path": "marketplace/assets/product-icon-160x160.png",
+      "format": "PNG",
+      "width": 160,
+      "height": 160,
+      "bytes": 682,
+      "sha256": "1855048BF0C5A48B1B7A5EA09E8CD75C624DC0D4EB773D5060488C716DCEA77B"
+    },
+    {
+      "path": "marketplace/gallery/01-check-the-csv-before-the-import.png",
+      "format": "PNG",
+      "width": 1400,
+      "height": 930,
+      "bytes": 178854,
+      "sha256": "5CA194751158EDE84E6EAE4428153C55B7C15B33F090085CE78B97EE25CD3A64"
+    },
+    {
+      "path": "marketplace/gallery/02-confirm-the-supplier's-columns.png",
+      "format": "PNG",
+      "width": 1400,
+      "height": 930,
+      "bytes": 192785,
+      "sha256": "6AE0CBE26D1E64AA654ACDBBF098930072EBB7C6824E88E8A5DE528192C7126F"
+    },
+    {
+      "path": "marketplace/gallery/03-get-specific-row-findings.png",
+      "format": "PNG",
+      "width": 1400,
+      "height": 930,
+      "bytes": 203331,
+      "sha256": "712C1C1FBF2169BA2782F6CF82574B7F72986A35A3721D73560400B779B39A90"
+    }
+  ]
+}
