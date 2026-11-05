@@ -22,7 +22,7 @@ final class Admin {
 		add_action( 'admin_post_vig_process', array( $this, 'process_upload' ) );
 		add_action( 'admin_post_vig_download', array( $this, 'download' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'admin_init', array( 'VariationImportGuard\\Storage', 'cleanup' ) );
+		add_action( 'load-tools_page_' . self::PAGE, array( 'VariationImportGuard\\Storage', 'cleanup' ) );
 	}
 
 	/** Add a Tools screen accessible to store managers and administrators. */

@@ -5,6 +5,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 $variation_import_guard_directory = trailingslashit( get_temp_dir() ) . 'variation-import-guard-' . substr( hash( 'sha256', wp_normalize_path( ABSPATH ) ), 0, 16 );
+wp_clear_scheduled_hook( 'vig_cleanup_files' );
 if ( is_dir( $variation_import_guard_directory ) ) {
 	foreach ( glob( trailingslashit( $variation_import_guard_directory ) . '*' ) as $variation_import_guard_path ) {
 		$variation_import_guard_name = basename( $variation_import_guard_path );

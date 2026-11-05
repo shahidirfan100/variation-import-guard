@@ -11,10 +11,29 @@ class WP_Error {
 	public function __construct( $code, $message ) { $this->message = $message; }
 	public function get_error_message() { return $this->message; }
 }
+class VIG_Test_WPDB {
+	public $term_taxonomy = 'wp_term_taxonomy';
+	public $terms = 'wp_terms';
+	public $posts = 'wp_posts';
+	public $postmeta = 'wp_postmeta';
+	public $term_relationships = 'wp_term_relationships';
+	public $products = array();
+	private $arguments = array();
+	public function prepare( $query, ...$arguments ) { $this->arguments = $arguments; return $query; }
+	public function get_var( $query ) { return 17; }
+	public function get_results( $query, $format ) {
+		$requested = array_slice( $this->arguments, 1 );
+		$by_sku = false !== strpos( $query, 'pm.meta_value IN' );
+		return array_values( array_filter( $this->products, static function ( $product ) use ( $requested, $by_sku ) {
+			return $by_sku ? in_array( $product['sku'], $requested, true ) : in_array( $product['ID'], array_map( 'intval', $requested ), true );
+		} ) );
+	}
+}
 function __( $text, $domain = '' ) { return $text; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_delete_file( $path ) { return @unlink( $path ); }
 function trailingslashit( $path ) { return rtrim( $path, '/\\' ) . DIRECTORY_SEPARATOR; }
+function wc_get_product() { return true; }
 
 require_once dirname( __DIR__ ) . '/includes/class-csv-preflight.php';
 
@@ -160,6 +179,22 @@ try {
 	$rows = read_csv( $fixed );
 	assert_true( 'id:77' === $rows[2][3], 'Repairs numeric product ID parent reference.' );
 	assert_true( in_array( 'parent_id_prefix', read_codes( $report ), true ), 'Reports the stable ID-prefix repair.' );
+
+	// An unprefixed numeric parent is a SKU when it matches a store product, even if another product has that ID.
+	$GLOBALS['wpdb'] = new VIG_Test_WPDB();
+	$GLOBALS['wpdb']->products = array(
+		array( 'ID' => 456, 'post_type' => 'product', 'sku' => '123', 'is_variable' => '1' ),
+		array( 'ID' => 123, 'post_type' => 'product', 'sku' => 'OTHER', 'is_variable' => '0' ),
+	);
+	$source = $root . DIRECTORY_SEPARATOR . 'numeric-parent-sku.csv';
+	write_csv( $source, array(
+		array( 'Type', 'SKU', 'Parent', 'Attribute 1 name', 'Attribute 1 value(s)', 'Regular price' ),
+		array( 'variation', 'V-123', '123', 'Size', 'M', '10.00' ),
+	) );
+	list( $summary, $fixed, $report ) = run_job( $root, $source, str_repeat( 'j', 48 ), array( 'catalog_check' => true ) );
+	$codes = read_codes( $report );
+	assert_true( 0 === $summary['errors'], 'Resolves a numeric parent SKU to its matching variable product.' );
+	assert_true( ! in_array( 'parent_id_prefix', $codes, true ), 'Does not rewrite a numeric SKU as an unrelated product ID.' );
 
 	// Delimited rows, BOM, and Windows-1252 characters are handled.
 	$source = $root . DIRECTORY_SEPARATOR . 'encoded.csv';
