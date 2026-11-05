@@ -387,7 +387,7 @@ final class CSV_Preflight {
 		$best = ',';
 		$max = 1;
 		foreach ( $candidates as $candidate ) {
-			$count = count( str_getcsv( (string) $line, $candidate, '"', '\\' ) );
+			$count = count( str_getcsv( (string) $line, $candidate, '"', '' ) );
 			if ( $count > $max ) {
 				$best = $candidate;
 				$max  = $count;
@@ -448,7 +448,7 @@ final class CSV_Preflight {
 
 	/** Read one RFC-style CSV record with a bounded record buffer. */
 	private static function read_csv_row( $handle, $delimiter ) {
-		return fgetcsv( $handle, self::MAX_RECORD_BYTES, $delimiter, '"', '\\' );
+		return fgetcsv( $handle, self::MAX_RECORD_BYTES, $delimiter, '"', '' );
 	}
 
 	/** Map canonical WooCommerce fields and common supplier aliases. */

@@ -72,7 +72,7 @@ function run_job( $root, $source, $token, $options = array() ) {
 function read_csv( $path ) {
 	$handle = fopen( $path, 'rb' );
 	$rows = array();
-	while ( false !== ( $row = fgetcsv( $handle, 1048576, ',', '"', '\\' ) ) ) {
+	while ( false !== ( $row = fgetcsv( $handle, 1048576, ',', '"', '' ) ) ) {
 		$rows[] = $row;
 	}
 	fclose( $handle );
@@ -195,6 +195,17 @@ try {
 	$codes = read_codes( $report );
 	assert_true( 0 === $summary['errors'], 'Resolves a numeric parent SKU to its matching variable product.' );
 	assert_true( ! in_array( 'parent_id_prefix', $codes, true ), 'Does not rewrite a numeric SKU as an unrelated product ID.' );
+
+	// Reordered variation rows preserve quotes after a literal backslash.
+	$source = $root . DIRECTORY_SEPARATOR . 'quoted-backslash.csv';
+	write_csv( $source, array(
+		array( 'Type', 'SKU', 'Parent', 'Attribute 1 name', 'Attribute 1 value(s)', 'Regular price', 'Description' ),
+		array( 'variable', 'P-BS', '', 'Size', 'M', '', 'parent' ),
+		array( 'variation', 'V-BS', 'P-BS', 'Size', 'M', '10.00', 'path\\"quote' ),
+	) );
+	list( $summary, $fixed ) = run_job( $root, $source, str_repeat( 'k', 48 ) );
+	$rows = read_csv( $fixed );
+	assert_true( 'path\\"quote' === $rows[2][6], 'Preserves a literal backslash and quote in a reordered variation row.' );
 
 	// Delimited rows, BOM, and Windows-1252 characters are handled.
 	$source = $root . DIRECTORY_SEPARATOR . 'encoded.csv';
