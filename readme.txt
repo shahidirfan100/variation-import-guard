@@ -4,7 +4,7 @@ Tags: woocommerce, product-import, csv, product-variations, validation
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,11 @@ Review every reported error and warning first. A clean CSV check does not confir
 The plugin does not send file contents or store data to an external service. CSV content is processed on your WordPress server. The uploaded source file is removed after processing; output files expire after 24 hours.
 
 == Changelog ==
+
+= 1.0.1 =
+* Fix numeric parent SKU matching and preserve quoted CSV values during row reordering.
+* Report output write failures instead of returning incomplete downloads.
+* Reduce admin cleanup work, clear scheduled cleanup on uninstall, and improve footer contrast.
 
 = 1.0.0 =
 * Initial release.
