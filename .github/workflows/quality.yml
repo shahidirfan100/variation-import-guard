@@ -1,0 +1,53 @@
+name: Plugin quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }} checks
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Check PHP syntax
+        run: find . -path './.git' -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Run CSV preflight checks
+        run: php tests/preflight-tests.php
+
+  plugin-check:
+    name: WordPress Plugin Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Prepare install package
+        run: |
+          mkdir -p build/variation-import-guard/includes build/variation-import-guard/assets/css
+          cp variation-import-guard.php readme.txt uninstall.php build/variation-import-guard/
+          cp includes/*.php build/variation-import-guard/includes/
+          cp assets/css/admin.css build/variation-import-guard/assets/css/
+
+      - name: Run WordPress Plugin Check
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: ./build/variation-import-guard

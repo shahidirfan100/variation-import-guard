@@ -120,6 +120,12 @@ final class CSV_Preflight {
 			return new \WP_Error( 'vig_write', __( 'A private working file could not be created. Check the server temporary directory permissions.', 'variation-import-guard' ) );
 		}
 
+		$write_failed = false;
+		$write_csv = static function ( $handle, $fields ) use ( &$write_failed ) {
+			if ( false === self::write_csv_row( $handle, $fields ) ) {
+				$write_failed = true;
+			}
+		};
 		$summary = array(
 			'rows' => 0,
 			'parents' => 0,
@@ -132,9 +138,9 @@ final class CSV_Preflight {
 			'notices' => 0,
 			'sample' => array(),
 		);
-		self::write_csv_row( $report, array( __( 'Row', 'variation-import-guard' ), __( 'Severity', 'variation-import-guard' ), __( 'Check', 'variation-import-guard' ), __( 'Finding', 'variation-import-guard' ) ) );
-		$issue_writer = static function ( $row, $severity, $code, $message ) use ( $report, &$summary ) {
-			self::write_csv_row( $report, array( (int) $row, $severity, $code, self::safe_report_text( $message ) ) );
+		$write_csv( $report, array( __( 'Row', 'variation-import-guard' ), __( 'Severity', 'variation-import-guard' ), __( 'Check', 'variation-import-guard' ), __( 'Finding', 'variation-import-guard' ) ) );
+		$issue_writer = static function ( $row, $severity, $code, $message ) use ( $report, &$summary, $write_csv ) {
+			$write_csv( $report, array( (int) $row, $severity, $code, self::safe_report_text( $message ) ) );
 			++$summary[ 'error' === $severity ? 'errors' : ( 'warning' === $severity ? 'warnings' : 'notices' ) ];
 			if ( count( $summary['sample'] ) < 20 ) {
 				$summary['sample'][] = array( 'row' => (int) $row, 'severity' => $severity, 'code' => $code, 'message' => $message );
@@ -142,7 +148,7 @@ final class CSV_Preflight {
 		};
 
 		$output_layout = self::output_layout( $header, $mapping, $max_columns );
-		self::write_csv_row( $output, $output_layout['headers'] );
+		$write_csv( $output, $output_layout['headers'] );
 		$header_positions = array();
 		foreach ( $header as $index => $label ) {
 			$key = self::header_key( $label );
@@ -225,9 +231,12 @@ final class CSV_Preflight {
 					$issue_writer( $row_number, 'error', 'missing_parent', __( 'Variation row has no parent identifier.', 'variation-import-guard' ) );
 				}
 				$meta = array( 'row' => $row_number, 'sku' => $sku, 'parent' => $parent, 'type' => $type, 'attributes' => $attributes, 'parent_key' => self::identifier_key( $parent, $normalize ) );
-				fwrite( $metadata, wp_json_encode( $meta, JSON_INVALID_UTF8_SUBSTITUTE ) . "\n" );
+				$metadata_line = wp_json_encode( $meta, JSON_INVALID_UTF8_SUBSTITUTE ) . "\n";
+				if ( strlen( $metadata_line ) !== fwrite( $metadata, $metadata_line ) ) {
+					$write_failed = true;
+				}
 				$row = self::make_output_row( $row, $output_layout, $normalize );
-				self::write_csv_row( $variations, $row );
+				$write_csv( $variations, $row );
 			} else {
 				if ( 'variable' === $type ) {
 					++$summary['parents'];
@@ -245,16 +254,22 @@ final class CSV_Preflight {
 					// Type is explicitly variation even if the parent column is empty.
 				}
 				$row = self::make_output_row( $row, $output_layout, $normalize );
-				self::write_csv_row( $output, $row );
+				$write_csv( $output, $row );
 			}
 		}
 		fclose( $source );
-		fclose( $variations );
-		fclose( $metadata );
+		if ( ! self::close_many( array( $variations, $metadata ) ) ) {
+			$write_failed = true;
+		}
+		if ( $write_failed ) {
+			self::close_many( array( $output, $report ) );
+			self::delete_many( array( $fixed_path, $report_path, $variation_path, $metadata_path ) );
+			return new \WP_Error( 'vig_write', __( 'A private output file could not be completed. Check the temporary folder space and permissions, then try again.', 'variation-import-guard' ) );
+		}
 
 		$catalog = array();
 		if ( $catalog_on ) {
-			$catalog = self::catalog_lookup( array_values( $all_skus ), array_values( $parent_refs ), $normalize );
+			$catalog = self::catalog_lookup( array_merge( array_values( $all_skus ), array_values( $parent_refs ) ), array_values( $parent_refs ), $normalize );
 			foreach ( $all_skus as $key => $sku_value ) {
 				if ( isset( $catalog[ self::identifier_key( $sku_value, $normalize ) ] ) ) {
 					// translators: %s: product SKU that already exists in the store.
@@ -279,6 +294,9 @@ final class CSV_Preflight {
 			}
 			$parent_key = $data['parent_key'];
 			$parent_data = isset( $parents[ $parent_key ] ) ? $parents[ $parent_key ] : false;
+			if ( ! $parent_data && $catalog_on && isset( $catalog[ $parent_key ] ) ) {
+				$parent_data = $catalog[ $parent_key ];
+			}
 			if ( ! $parent_data && preg_match( '/^\d+$/', $data['parent'] ) && isset( $parents[ 'id:' . $data['parent'] ] ) ) {
 				$parent_data = $parents[ 'id:' . $data['parent'] ];
 				$parent_id_repairs[ $data['row'] ] = 'id:' . $data['parent'];
@@ -292,9 +310,6 @@ final class CSV_Preflight {
 				// translators: %s: numeric product ID used as the parent reference.
 				$issue_writer( $data['row'], 'notice', 'parent_id_prefix', sprintf( __( 'The parent ID was rewritten as "id:%s", the format WooCommerce expects.', 'variation-import-guard' ), $data['parent'] ) );
 				++$summary['repairable_rows'];
-			}
-			if ( ! $parent_data && $catalog_on && isset( $catalog[ $parent_key ] ) ) {
-				$parent_data = $catalog[ $parent_key ];
 			}
 			if ( ! $parent_data ) {
 				++$summary['orphan_rows'];
@@ -340,13 +355,16 @@ final class CSV_Preflight {
 			if ( is_array( $data ) && isset( $parent_id_repairs[ $data['row'] ], $output_layout['source_to_output'][ $mapping['parent'] ] ) ) {
 				$row[ $output_layout['source_to_output'][ $mapping['parent'] ] ] = $parent_id_repairs[ $data['row'] ];
 			}
-			self::write_csv_row( $output, $row );
+			$write_csv( $output, $row );
 		}
-		fclose( $output );
-		fclose( $metadata );
-		fclose( $variation_file );
-		fclose( $report );
+		if ( ! self::close_many( array( $output, $metadata, $variation_file, $report ) ) ) {
+			$write_failed = true;
+		}
 		self::delete_many( array( $variation_path, $metadata_path ) );
+		if ( $write_failed ) {
+			self::delete_many( array( $fixed_path, $report_path ) );
+			return new \WP_Error( 'vig_write', __( 'A private output file could not be completed. Check the temporary folder space and permissions, then try again.', 'variation-import-guard' ) );
+		}
 
 		if ( 0 === $summary['errors'] && 0 === $summary['warnings'] ) {
 			$summary['status'] = 'ready';
@@ -369,7 +387,7 @@ final class CSV_Preflight {
 		$best = ',';
 		$max = 1;
 		foreach ( $candidates as $candidate ) {
-			$count = count( str_getcsv( (string) $line, $candidate, '"', '\\' ) );
+			$count = count( str_getcsv( (string) $line, $candidate, '"', '' ) );
 			if ( $count > $max ) {
 				$best = $candidate;
 				$max  = $count;
@@ -430,7 +448,7 @@ final class CSV_Preflight {
 
 	/** Read one RFC-style CSV record with a bounded record buffer. */
 	private static function read_csv_row( $handle, $delimiter ) {
-		return fgetcsv( $handle, self::MAX_RECORD_BYTES, $delimiter, '"', '\\' );
+		return fgetcsv( $handle, self::MAX_RECORD_BYTES, $delimiter, '"', '' );
 	}
 
 	/** Map canonical WooCommerce fields and common supplier aliases. */
@@ -710,11 +728,13 @@ final class CSV_Preflight {
 
 	/** Close handles that opened successfully. */
 	private static function close_many( $handles ) {
+		$success = true;
 		foreach ( $handles as $handle ) {
-			if ( is_resource( $handle ) ) {
-				fclose( $handle );
+			if ( is_resource( $handle ) && ! fclose( $handle ) ) {
+				$success = false;
 			}
 		}
+		return $success;
 	}
 
 	/** Remove intermediate paths. */

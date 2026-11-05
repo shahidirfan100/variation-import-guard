@@ -28,4 +28,6 @@ The checker accepts CSV files up to 8 MB and 15,000 rows. It streams rows and st
 
 ## Development checks
 
-The release validation report and test fixtures are included beside the install ZIP in the release package, outside the plugin folder.
+GitHub Actions runs the preflight harness on PHP 7.4, 8.3, and 8.5 and runs WordPress Plugin Check against the install files. The release validation report and test fixtures are included beside the install ZIP in the release package, outside the plugin folder.
+
+See [the competitor review](docs/competitor-review.md) for the current product comparison and compatibility opportunities.
