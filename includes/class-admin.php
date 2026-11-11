@@ -11,16 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Admin {
 	const PAGE = 'variation-import-guard';
-	const UPLOAD_PREFIX = 'vig_upload_';
+	const UPLOAD_PREFIX = 'variation_import_guard_upload_';
 	const JOB_TTL = DAY_IN_SECONDS;
 
 	/** Register page, form handlers, and private-file cleanup. */
 	public function register() {
 		Storage::register_hooks();
 		add_action( 'admin_menu', array( $this, 'add_page' ) );
-		add_action( 'admin_post_vig_stage', array( $this, 'stage_upload' ) );
-		add_action( 'admin_post_vig_process', array( $this, 'process_upload' ) );
-		add_action( 'admin_post_vig_download', array( $this, 'download' ) );
+		add_action( 'admin_post_variation_import_guard_stage', array( $this, 'stage_upload' ) );
+		add_action( 'admin_post_variation_import_guard_process', array( $this, 'process_upload' ) );
+		add_action( 'admin_post_variation_import_guard_download', array( $this, 'download' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'load-tools_page_' . self::PAGE, array( 'VariationImportGuard\\Storage', 'cleanup' ) );
 	}
@@ -42,7 +42,7 @@ final class Admin {
 		if ( 'tools_page_' . self::PAGE !== $hook ) {
 			return;
 		}
-		wp_enqueue_style( 'vig-admin', VIG_URL . 'assets/css/admin.css', array(), VIG_VERSION );
+		wp_enqueue_style( 'variation-import-guard-admin', VARIATION_IMPORT_GUARD_URL . 'assets/css/admin.css', array(), VARIATION_IMPORT_GUARD_VERSION );
 	}
 
 	/** Render upload, mapping, or result view. */
@@ -50,12 +50,12 @@ final class Admin {
 		if ( ! $this->can_manage() ) {
 			wp_die( esc_html__( 'You do not have permission to use this tool.', 'variation-import-guard' ) );
 		}
-		$upload_token = isset( $_GET['vig_upload'] ) ? sanitize_text_field( wp_unslash( $_GET['vig_upload'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a read-only view; the token is checked against the current user's transient.
-		$job_token    = isset( $_GET['vig_job'] ) ? sanitize_text_field( wp_unslash( $_GET['vig_job'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a read-only view; the token is checked against the current user's transient.
-		$error_token  = isset( $_GET['vig_error'] ) ? sanitize_text_field( wp_unslash( $_GET['vig_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a read-only notice; the token is checked against the current user's transient.
+		$upload_token = isset( $_GET['variation_import_guard_upload'] ) ? sanitize_text_field( wp_unslash( $_GET['variation_import_guard_upload'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a read-only view; the token is checked against the current user's transient.
+		$job_token    = isset( $_GET['variation_import_guard_job'] ) ? sanitize_text_field( wp_unslash( $_GET['variation_import_guard_job'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a read-only view; the token is checked against the current user's transient.
+		$error_token  = isset( $_GET['variation_import_guard_error'] ) ? sanitize_text_field( wp_unslash( $_GET['variation_import_guard_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a read-only notice; the token is checked against the current user's transient.
 		$error = '';
 		if ( $error_token && preg_match( '/^[a-f0-9]{48}$/', $error_token ) ) {
-			$error_data = get_transient( 'vig_error_' . $error_token );
+			$error_data = get_transient( 'variation_import_guard_error_' . $error_token );
 			if ( is_array( $error_data ) && get_current_user_id() === (int) $error_data['user_id'] ) {
 				$error = $error_data['message'];
 			}
@@ -93,10 +93,10 @@ final class Admin {
 		<section class="vig-card">
 			<div class="vig-step"><span>01</span><div><h2><?php esc_html_e( 'Choose a CSV file', 'variation-import-guard' ); ?></h2><p><?php esc_html_e( 'Upload a product or supplier CSV. The original file will stay untouched.', 'variation-import-guard' ); ?></p></div></div>
 			<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" enctype="multipart/form-data">
-				<input type="hidden" name="action" value="vig_stage">
-				<?php wp_nonce_field( 'vig_stage_upload', 'vig_nonce' ); ?>
+				<input type="hidden" name="action" value="variation_import_guard_stage">
+				<?php wp_nonce_field( 'variation_import_guard_stage_upload', 'variation_import_guard_nonce' ); ?>
 				<label class="vig-file-label" for="vig-file"><?php esc_html_e( 'CSV file (up to 8 MB)', 'variation-import-guard' ); ?></label>
-				<input id="vig-file" name="vig_file" type="file" accept=".csv,text/csv" required>
+				<input id="vig-file" name="variation_import_guard_file" type="file" accept=".csv,text/csv" required>
 				<p class="description"><?php esc_html_e( 'Files with up to 15,000 data rows are supported. Larger files can be split and checked in separate batches.', 'variation-import-guard' ); ?></p>
 				<div class="vig-actions"><button type="submit" class="button button-primary button-hero"><?php esc_html_e( 'Continue to column mapping', 'variation-import-guard' ); ?></button></div>
 			</form>
@@ -127,8 +127,8 @@ final class Admin {
 		<section class="vig-card">
 			<div class="vig-step"><span>02</span><div><h2><?php esc_html_e( 'Confirm the columns', 'variation-import-guard' ); ?></h2><p><?php esc_html_e( 'Detected headers are selected for you. Change a field if your supplier uses a different name.', 'variation-import-guard' ); ?></p></div></div>
 			<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
-				<input type="hidden" name="action" value="vig_process"><input type="hidden" name="token" value="<?php echo esc_attr( $token ); ?>">
-				<?php wp_nonce_field( 'vig_process_' . $token, 'vig_nonce' ); ?>
+				<input type="hidden" name="action" value="variation_import_guard_process"><input type="hidden" name="token" value="<?php echo esc_attr( $token ); ?>">
+				<?php wp_nonce_field( 'variation_import_guard_process_' . $token, 'variation_import_guard_nonce' ); ?>
 				<div class="vig-map-grid">
 					<?php
 					$roles = array(
@@ -199,7 +199,7 @@ final class Admin {
 				</tbody></table></div>
 				<?php if ( $summary['errors'] + $summary['warnings'] + $summary['notices'] > count( $summary['sample'] ) ) : ?><p class="description"><?php esc_html_e( 'The full report includes every finding.', 'variation-import-guard' ); ?></p><?php endif; ?>
 			<?php else : ?><div class="vig-clean"><h3><?php esc_html_e( 'No issues found', 'variation-import-guard' ); ?></h3><p><?php esc_html_e( 'The CSV passed the checks that apply to its mapped columns.', 'variation-import-guard' ); ?></p></div><?php endif; ?>
-			<div class="vig-downloads"><div><h3><?php esc_html_e( 'Download your files', 'variation-import-guard' ); ?></h3><p><?php esc_html_e( 'The corrected CSV places variable parents before their variations. The report contains each flagged row.', 'variation-import-guard' ); ?></p></div><div class="vig-actions"><a class="button button-primary" href="<?php echo esc_url( $this->download_url( $token, 'fixed' ) ); ?>"><?php esc_html_e( 'Download corrected CSV', 'variation-import-guard' ); ?></a><a class="button" href="<?php echo esc_url( $this->download_url( $token, 'report' ) ); ?>"><?php esc_html_e( 'Download row report', 'variation-import-guard' ); ?></a></div></div>
+			<div class="vig-downloads"><div><h3><?php esc_html_e( 'Download your files', 'variation-import-guard' ); ?></h3><p><?php esc_html_e( 'The corrected CSV places variable parents before their variations. The report contains each flagged row.', 'variation-import-guard' ); ?></p><p><?php esc_html_e( 'Formula-like values are prefixed with an apostrophe so spreadsheet software treats them as text. Review those values before importing.', 'variation-import-guard' ); ?></p></div><div class="vig-actions"><a class="button button-primary" href="<?php echo esc_url( $this->download_url( $token, 'fixed' ) ); ?>"><?php esc_html_e( 'Download corrected CSV', 'variation-import-guard' ); ?></a><a class="button" href="<?php echo esc_url( $this->download_url( $token, 'report' ) ); ?>"><?php esc_html_e( 'Download row report', 'variation-import-guard' ); ?></a></div></div>
 			<p class="vig-caution"><?php esc_html_e( 'A clean preflight checks CSV structure. Review WooCommerce column mapping and test an import on a staging store before updating a large catalog.', 'variation-import-guard' ); ?></p>
 		</section>
 		<div class="vig-actions vig-bottom-actions"><a class="button" href="<?php echo esc_url( admin_url( 'tools.php?page=' . self::PAGE ) ); ?>"><?php esc_html_e( 'Check another CSV', 'variation-import-guard' ); ?></a></div>
@@ -211,11 +211,11 @@ final class Admin {
 		if ( ! $this->can_manage() ) {
 			wp_die( esc_html__( 'You do not have permission to use this tool.', 'variation-import-guard' ) );
 		}
-		check_admin_referer( 'vig_stage_upload', 'vig_nonce' );
-		if ( empty( $_FILES['vig_file'] ) || ! isset( $_FILES['vig_file']['error'], $_FILES['vig_file']['tmp_name'], $_FILES['vig_file']['name'], $_FILES['vig_file']['size'] ) ) {
+		check_admin_referer( 'variation_import_guard_stage_upload', 'variation_import_guard_nonce' );
+		if ( empty( $_FILES['variation_import_guard_file'] ) || ! isset( $_FILES['variation_import_guard_file']['error'], $_FILES['variation_import_guard_file']['tmp_name'], $_FILES['variation_import_guard_file']['name'], $_FILES['variation_import_guard_file']['size'] ) ) {
 			$this->fail( __( 'Choose a CSV file to continue.', 'variation-import-guard' ) );
 		}
-		$file = $_FILES['vig_file']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validated as a PHP upload, then the filename and size are checked before moving it.
+		$file = $_FILES['variation_import_guard_file']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validated as a PHP upload, then the filename and size are checked before moving it.
 		if ( UPLOAD_ERR_OK !== (int) $file['error'] || ! is_uploaded_file( $file['tmp_name'] ) ) {
 			$this->fail( __( 'The upload did not finish. Check the file size allowed by your server and try again.', 'variation-import-guard' ) );
 		}
@@ -262,7 +262,7 @@ final class Admin {
 		}
 		$upload = array( 'user_id' => get_current_user_id(), 'path' => $path, 'bytes' => (int) $file['size'], 'headers' => $inspection['headers'], 'mapping' => $inspection['mapping'], 'encoding' => $inspection['encoding'], 'created' => time() );
 		set_transient( self::UPLOAD_PREFIX . $token, $upload, self::JOB_TTL );
-		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'vig_upload' => $token ), admin_url( 'tools.php' ) ) );
+		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'variation_import_guard_upload' => $token ), admin_url( 'tools.php' ) ) );
 		exit;
 	}
 
@@ -276,7 +276,7 @@ final class Admin {
 		if ( ! $this->can_manage() ) {
 			wp_die( esc_html__( 'You do not have permission to use this tool.', 'variation-import-guard' ) );
 		}
-		check_admin_referer( 'vig_process_' . $token, 'vig_nonce' );
+		check_admin_referer( 'variation_import_guard_process_' . $token, 'variation_import_guard_nonce' );
 		$upload = get_transient( self::UPLOAD_PREFIX . $token );
 		if ( ! $this->owned_upload( $upload ) || ! is_file( $upload['path'] ) ) {
 			$this->fail( __( 'This staged file has expired. Upload the CSV again.', 'variation-import-guard' ) );
@@ -310,13 +310,13 @@ final class Admin {
 		delete_transient( self::UPLOAD_PREFIX . $token );
 		if ( is_wp_error( $summary ) ) {
 			$error_token = Storage::token();
-			set_transient( 'vig_error_' . $error_token, array( 'user_id' => get_current_user_id(), 'message' => $summary->get_error_message() ), MINUTE_IN_SECONDS * 10 );
-			wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'vig_error' => $error_token ), admin_url( 'tools.php' ) ) );
+			set_transient( 'variation_import_guard_error_' . $error_token, array( 'user_id' => get_current_user_id(), 'message' => $summary->get_error_message() ), MINUTE_IN_SECONDS * 10 );
+			wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'variation_import_guard_error' => $error_token ), admin_url( 'tools.php' ) ) );
 			exit;
 		}
 		$job = array( 'user_id' => get_current_user_id(), 'summary' => $summary, 'created' => time() );
 		set_transient( Storage::TRANSIENT_PREFIX . $token, $job, self::JOB_TTL );
-		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'vig_job' => $token ), admin_url( 'tools.php' ) ) );
+		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'variation_import_guard_job' => $token ), admin_url( 'tools.php' ) ) );
 		exit;
 	}
 
@@ -327,7 +327,7 @@ final class Admin {
 		}
 		$token = isset( $_GET['token'] ) ? sanitize_text_field( wp_unslash( $_GET['token'] ) ) : '';
 		$kind  = isset( $_GET['kind'] ) ? sanitize_key( wp_unslash( $_GET['kind'] ) ) : '';
-		check_admin_referer( 'vig_download_' . $token );
+		check_admin_referer( 'variation_import_guard_download_' . $token );
 		$job = get_transient( Storage::TRANSIENT_PREFIX . $token );
 		if ( ! preg_match( '/^[a-f0-9]{48}$/', $token ) || ! in_array( $kind, array( 'fixed', 'report' ), true ) || ! is_array( $job ) || get_current_user_id() !== (int) $job['user_id'] ) {
 			wp_die( esc_html__( 'This download has expired or is not available to your account.', 'variation-import-guard' ) );
@@ -361,8 +361,8 @@ final class Admin {
 	/** Redirect with a short-lived user-owned error. */
 	private function fail( $message ) {
 		$error_token = Storage::token();
-		set_transient( 'vig_error_' . $error_token, array( 'user_id' => get_current_user_id(), 'message' => sanitize_text_field( $message ) ), MINUTE_IN_SECONDS * 10 );
-		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'vig_error' => $error_token ), admin_url( 'tools.php' ) ) );
+		set_transient( 'variation_import_guard_error_' . $error_token, array( 'user_id' => get_current_user_id(), 'message' => sanitize_text_field( $message ) ), MINUTE_IN_SECONDS * 10 );
+		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE, 'variation_import_guard_error' => $error_token ), admin_url( 'tools.php' ) ) );
 		exit;
 	}
 
@@ -375,8 +375,8 @@ final class Admin {
 
 	/** Build a capability and nonce protected download URL. */
 	private function download_url( $token, $kind ) {
-		$url = add_query_arg( array( 'action' => 'vig_download', 'token' => $token, 'kind' => $kind ), admin_url( 'admin-post.php' ) );
-		return wp_nonce_url( $url, 'vig_download_' . $token );
+		$url = add_query_arg( array( 'action' => 'variation_import_guard_download', 'token' => $token, 'kind' => $kind ), admin_url( 'admin-post.php' ) );
+		return wp_nonce_url( $url, 'variation_import_guard_download_' . $token );
 	}
 
 	/** Human-readable status label. */

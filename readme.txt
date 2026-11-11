@@ -4,7 +4,7 @@ Tags: woocommerce, product-import, csv, product-variations, validation
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,7 +53,7 @@ CSV files up to 8 MB and 15,000 data rows. UTF-8 (with or without BOM) and Windo
 
 = What does the corrected CSV change? =
 
-It renames mapped fields to WooCommerce headings, puts variable parent rows before variation rows, and can trim surrounding whitespace in mapped fields when that option is selected. It leaves other product cells as supplied.
+It renames mapped fields to WooCommerce headings, puts variable parent rows before variation rows, and can trim surrounding whitespace in mapped fields when that option is selected. Formula-like values and headers are prefixed with an apostrophe in both downloads so spreadsheet software treats them as text. Review those prefixes before importing; remove one only when you have confirmed the value is intended as plain text.
 
 = Does the live catalog check change products? =
 
@@ -72,6 +72,10 @@ Review every reported error and warning first. A clean CSV check does not confir
 The plugin does not send file contents or store data to an external service. CSV content is processed on your WordPress server. The uploaded source file is removed after processing; output files expire after 24 hours.
 
 == Changelog ==
+
+= 1.0.2 =
+* Prefix formula-like cells in both CSV downloads to prevent spreadsheet formula execution.
+* Replace short global identifiers with a plugin-specific prefix.
 
 = 1.0.1 =
 * Fix numeric parent SKU matching and preserve quoted CSV values during row reordering.
