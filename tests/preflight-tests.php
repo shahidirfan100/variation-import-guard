@@ -11,7 +11,7 @@ class WP_Error {
 	public function __construct( $code, $message ) { $this->message = $message; }
 	public function get_error_message() { return $this->message; }
 }
-class VIG_Test_WPDB {
+class VARIATION_IMPORT_GUARD_Test_WPDB {
 	public $term_taxonomy = 'wp_term_taxonomy';
 	public $terms = 'wp_terms';
 	public $posts = 'wp_posts';
@@ -84,6 +84,20 @@ function read_codes( $path ) {
 }
 
 try {
+	// Spreadsheet formulas are neutralized in every downloaded field, including headers.
+	$source = $root . DIRECTORY_SEPARATOR . 'formula-cells.csv';
+	write_csv( $source, array(
+		array( 'Type', 'SKU', 'Parent', 'Description', 'Formula minus', 'Formula at', 'Formula tab', 'Already text', '=CUSTOM_HEADER()' ),
+		array( 'simple', '+1+1', '', '=HYPERLINK("https://example.test","click")', '-cmd|/C calc', '@SUM(A1:A2)', "\t=1+1", "'=1+1", "  =2+2" ),
+	) );
+	list( $summary, $fixed ) = run_job( $root, $source, str_repeat( 'm', 48 ) );
+	$rows = read_csv( $fixed );
+	assert_true( "'=CUSTOM_HEADER()" === $rows[0][8], 'Prefixes a formula-like source heading in the corrected download.' );
+	assert_true( "'+1+1" === $rows[1][1] && "'=HYPERLINK(\"https://example.test\",\"click\")" === $rows[1][3], 'Prefixes equals and plus formula-like source cells.' );
+	assert_true( "'-cmd|/C calc" === $rows[1][4] && "'@SUM(A1:A2)" === $rows[1][5], 'Prefixes minus and at-sign formula-like source cells.' );
+	assert_true( "'\t=1+1" === $rows[1][6] && "'  =2+2" === $rows[1][8], 'Prefixes formula-like values after tabs and leading whitespace.' );
+	assert_true( "'=1+1" === $rows[1][7], 'Does not double-prefix a value already escaped with an apostrophe.' );
+
 	// Parent-first export keeps the source intact and retains unrelated cells.
 	$source = $root . DIRECTORY_SEPARATOR . 'ordered.csv';
 	write_csv( $source, array(
@@ -181,7 +195,7 @@ try {
 	assert_true( in_array( 'parent_id_prefix', read_codes( $report ), true ), 'Reports the stable ID-prefix repair.' );
 
 	// An unprefixed numeric parent is a SKU when it matches a store product, even if another product has that ID.
-	$GLOBALS['wpdb'] = new VIG_Test_WPDB();
+	$GLOBALS['wpdb'] = new VARIATION_IMPORT_GUARD_Test_WPDB();
 	$GLOBALS['wpdb']->products = array(
 		array( 'ID' => 456, 'post_type' => 'product', 'sku' => '123', 'is_variable' => '1' ),
 		array( 'ID' => 123, 'post_type' => 'product', 'sku' => 'OTHER', 'is_variable' => '0' ),

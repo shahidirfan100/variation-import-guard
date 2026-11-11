@@ -10,25 +10,25 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Keeps uploads outside the public web root where possible and expires them.
  */
 final class Storage {
-	const TRANSIENT_PREFIX = 'vig_job_';
+	const TRANSIENT_PREFIX = 'variation_import_guard_job_';
 	const RETENTION = DAY_IN_SECONDS;
 
 	/** Set up private storage and scheduled cleanup. */
 	public static function activate() {
 		self::ensure_directory();
-		if ( ! wp_next_scheduled( 'vig_cleanup_files' ) ) {
-			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'vig_cleanup_files' );
+		if ( ! wp_next_scheduled( 'variation_import_guard_cleanup_files' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'variation_import_guard_cleanup_files' );
 		}
 	}
 
 	/** Stop scheduled cleanup. Files expire and are removed on the next activation. */
 	public static function deactivate() {
-		wp_clear_scheduled_hook( 'vig_cleanup_files' );
+		wp_clear_scheduled_hook( 'variation_import_guard_cleanup_files' );
 	}
 
 	/** Register the cleanup callback on each plugin load. */
 	public static function register_hooks() {
-		add_action( 'vig_cleanup_files', array( __CLASS__, 'cleanup' ) );
+		add_action( 'variation_import_guard_cleanup_files', array( __CLASS__, 'cleanup' ) );
 	}
 
 	/** Return the protected working directory, creating deny rules when needed. */
@@ -36,7 +36,7 @@ final class Storage {
 		$base = self::directory_path();
 
 		if ( ! wp_mkdir_p( $base ) ) {
-			return new \WP_Error( 'vig_storage', __( 'The private working folder could not be created. Check the server temporary directory permissions.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_storage', __( 'The private working folder could not be created. Check the server temporary directory permissions.', 'variation-import-guard' ) );
 		}
 
 		$rules = array(

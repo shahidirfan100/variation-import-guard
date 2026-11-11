@@ -22,21 +22,21 @@ final class CSV_Preflight {
 	/** Detect the source encoding and suggest column mappings without processing records. */
 	public static function inspect_headers( $source_path ) {
 		if ( ! is_file( $source_path ) || filesize( $source_path ) > self::MAX_BYTES ) {
-			return new \WP_Error( 'vig_file_size', __( 'Choose a CSV file no larger than 8 MB.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_file_size', __( 'Choose a CSV file no larger than 8 MB.', 'variation-import-guard' ) );
 		}
 		$encoding = self::detect_encoding( $source_path );
 		if ( 'UTF-16' === $encoding ) {
-			return new \WP_Error( 'vig_encoding', __( 'This file appears to use UTF-16 encoding. Save a UTF-8 or Windows CSV and upload it again.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_encoding', __( 'This file appears to use UTF-16 encoding. Save a UTF-8 or Windows CSV and upload it again.', 'variation-import-guard' ) );
 		}
 		$handle = fopen( $source_path, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file -- Read only the first record to detect the encoding and headers.
 		if ( false === $handle ) {
-			return new \WP_Error( 'vig_open', __( 'The uploaded file could not be opened.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_open', __( 'The uploaded file could not be opened.', 'variation-import-guard' ) );
 		}
 		$delimiter = self::detect_delimiter( $handle );
 		$headers = self::read_csv_row( $handle, $delimiter );
 		fclose( $handle );
 		if ( false === $headers || empty( $headers ) ) {
-			return new \WP_Error( 'vig_header', __( 'The file has no readable header row.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_header', __( 'The file has no readable header row.', 'variation-import-guard' ) );
 		}
 		$headers = array_map( static function ( $value ) use ( $encoding ) {
 			return self::convert_to_utf8( (string) $value, $encoding );
@@ -56,23 +56,23 @@ final class CSV_Preflight {
 	 */
 	public static function run( $source_path, $fixed_path, $report_path, $options = array() ) {
 		if ( ! is_file( $source_path ) || filesize( $source_path ) > self::MAX_BYTES ) {
-			return new \WP_Error( 'vig_file_size', __( 'Choose a CSV file no larger than 8 MB.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_file_size', __( 'Choose a CSV file no larger than 8 MB.', 'variation-import-guard' ) );
 		}
 
 		$encoding = self::detect_encoding( $source_path );
 		if ( 'UTF-16' === $encoding ) {
-			return new \WP_Error( 'vig_encoding', __( 'This file appears to use UTF-16 encoding. Save a UTF-8 or Windows CSV and upload it again.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_encoding', __( 'This file appears to use UTF-16 encoding. Save a UTF-8 or Windows CSV and upload it again.', 'variation-import-guard' ) );
 		}
 		$source = fopen( $source_path, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file -- fgetcsv streams the bounded upload without buffering the file.
 		if ( false === $source ) {
-			return new \WP_Error( 'vig_open', __( 'The uploaded file could not be opened.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_open', __( 'The uploaded file could not be opened.', 'variation-import-guard' ) );
 		}
 
 		$delimiter = self::detect_delimiter( $source );
 		$header    = self::read_csv_row( $source, $delimiter );
 		if ( false === $header || empty( $header ) ) {
 			fclose( $source );
-			return new \WP_Error( 'vig_header', __( 'The file has no readable header row.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_header', __( 'The file has no readable header row.', 'variation-import-guard' ) );
 		}
 		$header = array_map( static function ( $value ) use ( $encoding ) {
 			return self::convert_to_utf8( (string) $value, $encoding );
@@ -81,14 +81,14 @@ final class CSV_Preflight {
 		$mapping   = self::map_columns( $header, isset( $options['mapping'] ) ? $options['mapping'] : array() );
 		if ( false === $mapping['type'] || false === $mapping['sku'] || false === $mapping['parent'] ) {
 			fclose( $source );
-			return new \WP_Error( 'vig_mapping', __( 'Map the product type, SKU, and parent columns before running the check.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_mapping', __( 'Map the product type, SKU, and parent columns before running the check.', 'variation-import-guard' ) );
 		}
 		$mapped_indexes = array_filter( array( $mapping['type'], $mapping['sku'], $mapping['parent'], $mapping['id'], $mapping['price'], $mapping['stock'] ), static function ( $index ) {
 			return false !== $index;
 		} );
 		if ( count( $mapped_indexes ) !== count( array_unique( $mapped_indexes ) ) ) {
 			fclose( $source );
-			return new \WP_Error( 'vig_mapping_duplicate', __( 'Each mapped product field must use a different CSV column.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_mapping_duplicate', __( 'Each mapped product field must use a different CSV column.', 'variation-import-guard' ) );
 		}
 
 		$normalize  = ! empty( $options['normalize'] );
@@ -100,7 +100,7 @@ final class CSV_Preflight {
 			$max_columns = max( $max_columns, count( $scan_row ) );
 			if ( $scan_rows > self::MAX_ROWS ) {
 				fclose( $source );
-				return new \WP_Error( 'vig_row_limit', __( 'This file has more than 15,000 data rows. Split it into smaller CSV files and run the check again.', 'variation-import-guard' ) );
+				return new \WP_Error( 'variation_import_guard_row_limit', __( 'This file has more than 15,000 data rows. Split it into smaller CSV files and run the check again.', 'variation-import-guard' ) );
 			}
 		}
 		rewind( $source );
@@ -117,12 +117,13 @@ final class CSV_Preflight {
 			fclose( $source );
 			self::close_many( array( $output, $variations, $metadata, $report ) );
 			self::delete_many( array( $fixed_path, $report_path, $variation_path, $metadata_path ) );
-			return new \WP_Error( 'vig_write', __( 'A private working file could not be created. Check the server temporary directory permissions.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_write', __( 'A private working file could not be created. Check the server temporary directory permissions.', 'variation-import-guard' ) );
 		}
 
 		$write_failed = false;
-		$write_csv = static function ( $handle, $fields ) use ( &$write_failed ) {
-			if ( false === self::write_csv_row( $handle, $fields ) ) {
+		$write_csv = static function ( $handle, $fields ) use ( &$write_failed, $output, $report ) {
+			$spreadsheet_download = $handle === $output || $handle === $report;
+			if ( false === self::write_csv_row( $handle, $fields, $spreadsheet_download ) ) {
 				$write_failed = true;
 			}
 		};
@@ -140,7 +141,7 @@ final class CSV_Preflight {
 		);
 		$write_csv( $report, array( __( 'Row', 'variation-import-guard' ), __( 'Severity', 'variation-import-guard' ), __( 'Check', 'variation-import-guard' ), __( 'Finding', 'variation-import-guard' ) ) );
 		$issue_writer = static function ( $row, $severity, $code, $message ) use ( $report, &$summary, $write_csv ) {
-			$write_csv( $report, array( (int) $row, $severity, $code, self::safe_report_text( $message ) ) );
+			$write_csv( $report, array( (int) $row, $severity, $code, $message ) );
 			++$summary[ 'error' === $severity ? 'errors' : ( 'warning' === $severity ? 'warnings' : 'notices' ) ];
 			if ( count( $summary['sample'] ) < 20 ) {
 				$summary['sample'][] = array( 'row' => (int) $row, 'severity' => $severity, 'code' => $code, 'message' => $message );
@@ -174,7 +175,7 @@ final class CSV_Preflight {
 				fclose( $source );
 				self::close_many( array( $output, $variations, $metadata, $report ) );
 				self::delete_many( array( $fixed_path, $report_path, $variation_path, $metadata_path ) );
-				return new \WP_Error( 'vig_row_limit', __( 'This file has more than 15,000 data rows. Split it into smaller CSV files and run the check again.', 'variation-import-guard' ) );
+				return new \WP_Error( 'variation_import_guard_row_limit', __( 'This file has more than 15,000 data rows. Split it into smaller CSV files and run the check again.', 'variation-import-guard' ) );
 			}
 			if ( count( $row ) > count( $header ) ) {
 				$issue_writer( $row_number, 'warning', 'extra_columns', __( 'This row has more cells than the header. Extra cells were kept in the corrected file.', 'variation-import-guard' ) );
@@ -264,7 +265,7 @@ final class CSV_Preflight {
 		if ( $write_failed ) {
 			self::close_many( array( $output, $report ) );
 			self::delete_many( array( $fixed_path, $report_path, $variation_path, $metadata_path ) );
-			return new \WP_Error( 'vig_write', __( 'A private output file could not be completed. Check the temporary folder space and permissions, then try again.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_write', __( 'A private output file could not be completed. Check the temporary folder space and permissions, then try again.', 'variation-import-guard' ) );
 		}
 
 		$catalog = array();
@@ -283,7 +284,7 @@ final class CSV_Preflight {
 		if ( false === $metadata || false === $variation_file ) {
 			self::close_many( array( $output, $metadata, $variation_file, $report ) );
 			self::delete_many( array( $fixed_path, $report_path, $variation_path, $metadata_path ) );
-			return new \WP_Error( 'vig_spool', __( 'The temporary CSV could not be read back.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_spool', __( 'The temporary CSV could not be read back.', 'variation-import-guard' ) );
 		}
 
 		$seen_combinations = array();
@@ -363,7 +364,7 @@ final class CSV_Preflight {
 		self::delete_many( array( $variation_path, $metadata_path ) );
 		if ( $write_failed ) {
 			self::delete_many( array( $fixed_path, $report_path ) );
-			return new \WP_Error( 'vig_write', __( 'A private output file could not be completed. Check the temporary folder space and permissions, then try again.', 'variation-import-guard' ) );
+			return new \WP_Error( 'variation_import_guard_write', __( 'A private output file could not be completed. Check the temporary folder space and permissions, then try again.', 'variation-import-guard' ) );
 		}
 
 		if ( 0 === $summary['errors'] && 0 === $summary['warnings'] ) {
@@ -442,8 +443,24 @@ final class CSV_Preflight {
 	}
 
 	/** Write an RFC 4180 CSV row with PHP 8.4's implicit escape disabled. */
-	private static function write_csv_row( $handle, $fields ) {
+	private static function write_csv_row( $handle, $fields, $spreadsheet_safe = false ) {
+		if ( $spreadsheet_safe ) {
+			$fields = array_map( static function ( $value ) {
+				return is_string( $value ) ? self::spreadsheet_safe_cell( $value ) : $value;
+			}, $fields );
+		}
 		return fputcsv( $handle, $fields, ',', '"', '' );
+	}
+
+	/** Prefix formula-like CSV cells so spreadsheet software opens them as text. */
+	private static function spreadsheet_safe_cell( $value ) {
+		if ( '' === $value || "'" === $value[0] ) {
+			return $value;
+		}
+		if ( preg_match( '/^[\x00-\x20\x7F]*[=+@\-]/', $value ) || preg_match( '/^ *[\t\r\n]/', $value ) ) {
+			return "'" . $value;
+		}
+		return $value;
 	}
 
 	/** Read one RFC-style CSV record with a bounded record buffer. */
@@ -713,12 +730,6 @@ final class CSV_Preflight {
 	private static function attribute_key( $value, $normalize ) {
 		$value = (string) $value;
 		return $normalize ? strtolower( trim( $value ) ) : $value;
-	}
-
-	/** Make CSV report strings safe to open in a spreadsheet. */
-	private static function safe_report_text( $value ) {
-		$value = (string) $value;
-		return preg_match( '/^[\s]*[=+@\-]/', $value ) ? "'" . $value : $value;
 	}
 
 	/** Generate a private file token when the caller did not supply one. */
